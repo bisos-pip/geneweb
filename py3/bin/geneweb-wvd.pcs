@@ -1,0 +1,60 @@
+#!/usr/bin/env python
+
+""" #+begin_org
+* ~[Summary]~ :: A =PlantedCmndService= for geneweb.here NGINX virtual-host (capWebVd) --- fronts GeneWeb
+#+end_org """
+
+from bisos.b import cs
+import collections
+
+from bisos.csSeed import seedsLib
+
+from bisos.webCap import capWebVd_seed  # noqa: F401  # _atExit_
+
+from bisos.webCap import capWebVd_seedInfo
+from bisos.geneweb.genewebInfo import genewebInfo
+
+serverName = genewebInfo.fqdn
+# gwd binds genewebInfo.listenIp (loopback) only, and nginx proxies to that address rather
+# than to the geneweb.here one. Its wizard password is the only protection (rawBisos).
+proxyIp = genewebInfo.listenIp
+proxyPort = genewebInfo.portNu
+
+def wvdConfigFunc() -> str:
+    """A plain reverse proxy to gwd on loopback; gwd builds relative links, so none are rewritten."""
+    return f"""\
+server {{
+    listen 80;
+    server_name {serverName};
+
+    location / {{
+        proxy_pass http://{proxyIp}:{proxyPort};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }}
+}}
+"""
+
+capWebVd_seedInfo.setup(
+    serverName=serverName,
+    proxyPort=proxyPort,
+    wvdConfigFunc=wvdConfigFunc,
+)
+
+from bisos.csSeed import csCmndsList_seedInfo
+csCmnd = csCmndsList_seedInfo.csCmnd
+
+csCmndsList = [
+    csCmnd("configFileStdout", pars={'cls': 'configFile_nginxVd'},),
+    csCmnd("configFileUpdate", pars={'cls': 'configFile_nginxVd', 'runAs': 'root'},),
+    csCmnd("webVd_enable",),
+    csCmnd("webVd_verify",),
+    csCmnd("webVd_resolve",),
+    csCmnd("webVd_fqdnPing",),
+]
+
+csCmndsList_seedInfo.setup(
+    csCmndsList=csCmndsList,
+)

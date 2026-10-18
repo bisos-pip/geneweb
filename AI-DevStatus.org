@@ -1,0 +1,71 @@
+#+title: Development Status & Continuation Handoff
+#+TAGS: me ai aiAndMe
+
+# Provenance (installed once by aiActivity.cs --- not regenerated):
+#   Date:      2026-10-16T21:51:05+00:00
+#   User:      bystar
+#   Templates: /bisos/apps/defaults/ai-templates
+#   Command:   /bisos/venv/py3/devbin/aiActivity.cs -i initiate --activity=bisos-pip
+
+####+BEGIN: b:ai:file/particulars
+* AI Working Context
+  Working Directory: /bisos/git/auth/bxRepos/bisos-pip/geneweb
+  File: /bisos/git/auth/bxRepos/bisos-pip/geneweb/AI-DevStatus.org
+  Activity: bisos-pip
+  Companion Docs: AI-WORKFLOW.org, AI-Activity.org, AI-DevStatus.org
+####+END:
+
+Last updated: 2026-10-16 (package created and materialized on one host).
+
+This file is a working-state handoff so development can continue on another
+machine (which has this repo but NOT the developer's =~=). It captures the
+architecture, what works, what is untested and the design decisions made so far.
+
+This file is maintained by Claude. Updates are typically triggered by the
+=/bx-status-update= slash command, after major interactions, or before a release.
+
+* Current State
+  - bisos.geneweb packages GeneWeb 7.1.0-beta2's gwd as a hereWeb-collective CBS/CBM at
+    http://geneweb.here, with an empty demo base; wizard password geneweb (rawBisos convention).
+    Created 2026-10-16; small (21 MB), enabled in the rawBisosCbm set. Installed editable in bisos3.
+    Not committed yet.
+  - Materialized on this host (Debian 13): unit active; import, browse, edit protection and export
+    verified.
+
+* Architecture
+  - py3/bisos/geneweb/genewebInfo.py --- the single source of facts: the pinned zip (version,
+    sha256), paths, banna port, wizard password, demo base, the generators of /etc/default/geneweb,
+    and the install scripts (zipSetupScript, demoBaseScript), drift helpers.
+  - Layout: /opt/geneweb/{geneweb-7.1.0-beta2, current ->} root, read-only; /etc/default/geneweb
+    root:geneweb 640; /var/lib/geneweb/{bases,wd} geneweb (750).
+  - py3/bin: geneweb-sbom.pcs, genewebUsage-sbom.pcs, genewebCbs-sbom.pcs; geneweb-sysd.pcs;
+    geneweb-here-dns.pcs, geneweb-wvd.pcs, geneweb-assemble.cs; geneweb-cbs.pcs; cbmProc-geneweb.spcs;
+    genewebAdmin.cs (hostInfo, servicesInfo, basesInfo, driftCheck); quickGeneweb.cs.
+  - Port (bisos.banna): geneweb=24017, 127.0.0.1. geneweb.here -> 127.0.22.119 -> nginx :80 -> 24017.
+  - Account geneweb uid/gid 508.
+
+* What Works
+  Verified on this host, 2026-10-16: cbs_materialize (and again, a no-op); gwd 21 MB, 2 workers,
+  loopback only; / and /demo 200 through nginx; a GEDCOM imported (ged2gwb), its person served,
+  editing refused (401) without the wizard password and allowed with it, the base exported (gwb2ged);
+  driftCheck (env file, unit, link, demo base); verify.sh, all invariants PASS.
+
+* What Is Untested
+  - cbm_materialize at a planted leaf; a second platform; reboot; a version bump.
+  - genewebUsage-sbom.pcs alone on a host without the server.
+  - Large bases (gwd's -n_workers 2, its caches); GeneWeb's plugins.
+
+* Key Design Decisions
+  - v7.1.0-beta2 (user): the newest release and the only one with a published digest; named a beta.
+  - gwd only (user): gwsetup cannot bind an address (it would listen on every interface).
+  - Wizard password geneweb, no friend password, public pages open (user; rawBisos convention).
+  - An empty demo base, created once with gwc (user).
+  - Usage side: the GEDCOM and base tools from the same pinned zip (user), as promtool.
+  - The zip has no top directory: zipSetupScript unpacks it into installBase/<distName>.
+  - gwd's log to stdout (-log -), so to journald.
+  - Out of chain (under git): bxGenesis/start/rawBisosCBMs/README.org (the catalog: geneweb enabled,
+    raw platform); the cbm-package-authorship skill.
+
+# Local Variables:
+# eval: (setq-local toc-org-max-depth 4)
+# End:

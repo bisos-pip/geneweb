@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+
+""" #+begin_org
+* Panel::  [[file:./py3/panels/bisos.geneweb/_nodeBase_/fullUsagePanel-en.org]]
+* Overview and Relevant Pointers
+genewebUsage-sbom.pcs: software bill of materials of the usage side of the GeneWeb capability. GeneWeb
+has no separate client --- one uses it in a browser --- so the usage side is its GEDCOM tools
+(ged2gwb, gwb2ged) and base tools (gwc, gwu), for preparing and converting family trees on any host.
+They ship only in the GeneWeb zip, so this sbom unpacks the same pinned zip the server sbom does
+(whichever runs first unpacks it; the other finds it there).
+It does not need the server. geneweb-sbom.pcs does not pull this sbom in; genewebCbs-sbom.pcs, the
+sbom of geneweb-cbs.pcs, runs both.
+#+end_org """
+
+from bisos import b
+from bisos.b import cs
+from bisos.b import b_io
+
+from bisos.sbom import pkgsSeed  # pkgsSeed.plantWithWhich("seedSbom.cs")
+from bisos.geneweb.genewebInfo import genewebInfo, distSetupScript
+
+ap = pkgsSeed.aptPkg
+
+
+def _bash(script: str) -> b.op.Outcome:
+    outcome = b.subProc.WOpW(invedBy=None, log=1).bash(script)
+    if outcome.isProblematic():
+        b_io.eh.badOutcome(outcome)
+    return outcome
+
+
+def genewebToolsSetup():
+    """The pinned GeneWeb zip, for its tools. Not an apt package. Idempotent."""
+    return _bash(distSetupScript())
+
+
+aptPkgsList = [
+    ap("curl"),
+    ap("unzip"),
+    ap("libgmp10"),                                       # the tools link libgmp
+    ap("genewebToolsSetup", func=genewebToolsSetup),
+]
+
+pkgsSeed.setup(
+    aptPkgsList=aptPkgsList,
+)
+
+
+####+BEGIN: b:py3:cs:cmnd/classHead :cmndName "readme" :extent "verify" :comment "Describe" :parsMand "" :parsOpt "" :argsMin 0 :argsMax 0 :pyInv ""
+""" #+begin_org
+*  _[[elisp:(blee:menu-sel:outline:popupMenu)][±]]_ _[[elisp:(blee:menu-sel:navigation:popupMenu)][Ξ]]_ [[elisp:(outline-show-branches+toggle)][|=]] [[elisp:(bx:orgm:indirectBufOther)][|>]] *[[elisp:(blee:ppmm:org-mode-toggle)][|N]]*  CmndSvc-   [[elisp:(outline-show-subtree+toggle)][||]] <<readme>>  *Describe*  =verify= ro=cli   [[elisp:(org-cycle)][| ]]
+#+end_org """
+class readme(cs.Cmnd):
+    cmndParamsMandatory = [ ]
+    cmndParamsOptional = [ ]
+    cmndArgsLen = {'Min': 0, 'Max': 0,}
+
+    @cs.track(fnLoc=True, fnEntry=True, fnExit=True)
+    def cmnd(self,
+             rtInv: cs.RtInvoker,
+             cmndOutcome: b.op.Outcome,
+    ) -> b.op.Outcome:
+        """Describe"""
+        failed = b_io.eh.badOutcome
+        callParamsDict = {}
+        if self.invocationValidate(rtInv, cmndOutcome, callParamsDict, None).isProblematic():
+            return failed(cmndOutcome)
+####+END:
+        i = genewebInfo
+        descriptionStr = f"""\
+** Scope: the usage side of the GeneWeb capability -- the GEDCOM and base tools, for any host.
+   Part of bisos.geneweb.
+
+** What this installs:
+  1) apt packages: curl, unzip, libgmp10.
+  2) genewebToolsSetup: {i.distUrl()}
+     verified by SHA-256, with {i.homeLink} pointing at it. The same zip as the server's.
+     Tools: {i.tool("ged2gwb")}, {i.tool("gwb2ged")}, {i.tool("gwc")}, {i.tool("gwu")}
+
+** Standalone: this sbom does not need the server. geneweb-sbom.pcs does not pull it in;
+   geneweb-cbs.pcs runs both, through genewebCbs-sbom.pcs.
+
+** To use them:
+       {i.tool("ged2gwb")} family.ged -o family     # a GEDCOM file -> a base (family.gwb)
+       {i.tool("gwb2ged")} family -o family.ged     # a base -> GEDCOM
+
+       genewebUsage-sbom.pcs -i sbom_fullUpdate\
+"""
+        print(descriptionStr)
+
+        return cmndOutcome.set(
+            opError=b.op.OpError.Success,
+            opResults=None,
+        )
+
+
+def examples_csu() -> b.op.Outcome:
+    """Common Usage Examples for this Command-Service Unit"""
+
+    cmnd = cs.examples.cmndEnter
+    literal = cs.examples.execInsert
+    i = genewebInfo
+
+    cmndOutcome = b.op.Outcome()
+
+    cs.examples.menuChapter('*GeneWeb Usage -- sbom Examples*')
+    cmnd('readme', comment=" # An overview short description")
+
+    cs.examples.menuChapter('*Installation*')
+    literal("genewebUsage-sbom.pcs -i sbom_fullUpdate")
+
+    cs.examples.menuChapter('*Use It*')
+    literal(f"{i.tool('ged2gwb')} family.ged -o family")
+    literal(f"{i.tool('gwb2ged')} family -o family.ged")
+
+    cs.examples.menuChapter('*End-Of GeneWeb Usage -- sbom Examples*')
+    return cmndOutcome

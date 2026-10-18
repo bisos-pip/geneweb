@@ -1,0 +1,51 @@
+#!/usr/bin/env python
+
+####+BEGIN: b:prog:file/particulars :authors ("./inserts/authors-mb.org")
+""" #+begin_org
+* *[[elisp:(org-cycle)][| Particulars |]]* :: Authors, version
+** This File: /bisos/git/bxRepos/bisos-pip/geneweb/py3/bin/geneweb-sysd.pcs
+** Authors: Mohsen BANAN, http://mohsen.banan.1.byname.net/contact
+#+end_org """
+####+END:
+
+""" #+begin_org
+* Panel::  [[file:./py3/panels/bisos.geneweb/_nodeBase_/fullUsagePanel-en.org]]
+* Overview and Relevant Pointers
+The geneweb.service unit: gwd, GeneWeb's web server, from the read-only distribution, serving the
+bases in /var/lib/geneweb/bases. Flags come from ARGS in /etc/default/geneweb, expanded as separate
+words ($ARGS); its log goes to stdout, so to journald.
+#+end_org """
+
+from bisos.debian import systemd_seedInfo
+from bisos.debian import systemd_seed as systemd_seed  # noqa
+
+from bisos.geneweb.genewebInfo import genewebInfo, sysdServiceLines
+
+def sysdUnitFileFunc() -> str | None:
+    """Produce the unit file as a string."""
+
+    if not ( execPath := genewebInfo.tool("gwd") ).exists():
+        return None
+
+    templateStr = f"""
+[Unit]
+Description=GeneWeb gwd (genealogy web server)
+After=network.target
+
+[Service]
+Type=simple
+{sysdServiceLines(genewebInfo.envFile)}WorkingDirectory={genewebInfo.basesDir}
+ExecStart={execPath} $ARGS
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+"""
+    return templateStr
+
+systemd_seedInfo.setup(
+    seedType="sysdSysUnit",
+    sysdUnitName="geneweb",
+    sysdUnitFileFunc=sysdUnitFileFunc,
+)

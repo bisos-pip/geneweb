@@ -1,0 +1,93 @@
+#+title: Work Plan
+#+DATE: <2026-06-10 Wed 13:54>
+#+AUTHOR: Mohsen BANAN
+#+OPTIONS: toc:4
+#+TAGS: me ai aiAndMe
+
+# Provenance (installed once by aiActivity.cs --- not regenerated):
+#   Date:      2026-10-16T21:51:05+00:00
+#   User:      bystar
+#   Templates: /bisos/apps/defaults/ai-templates
+#   Command:   /bisos/venv/py3/devbin/aiActivity.cs -i initiate --activity=bisos-pip
+
+####+BEGIN: b:ai:file/particulars
+* AI Working Context
+  Working Directory: /bisos/git/auth/bxRepos/bisos-pip/geneweb
+  File: /bisos/git/auth/bxRepos/bisos-pip/geneweb/AI-WorkPlan.org
+  Activity: bisos-pip
+  Companion Docs: AI-WORKFLOW.org, AI-Activity.org, AI-DevStatus.org
+####+END:
+
+This Work Plan file drives the AI collaborative development.
+Interactions are broken down into "Stages". Each Stage has a set
+of TODOs that I work with Claude to accomplish.
+
+Note to a fresh Claude: read this file together with AI-WORKFLOW.org,
+AI-Activity.org and AI-DevStatus.org to orient yourself. The =<<Context Confirmation>>=
+TODO below is the standard first step, or use =/bx-confirm0= as the automated equivalent.
+TODOs tagged =:ai:= are assigned to Claude. After completing a TODO, summarize results
+under =----- Results: ------= and mark it DONE.
+
+* Stage 0: Confirm AI's Understanding of This Repo's Context
+
+Goal: Confirm AI's understanding of the context and capture that in [[Context Confirmation]] TODO.
+
+
+* Stage 0 TODOs
+** +
+** LOOP [#A] <<Context Confirmation>> for AI (typically triggered by /bx-confirm0) :aiAndMe:
+SCHEDULED: <2026-06-09 Tue>
+Must be repeated each time a new Claude instance is started here.
+Based on the series of files starting from CLAUDE.md in this repo,
+describe succinctly what you have understood.
+Enumerate explicitly which files you have imported and which you have considered.
+Prompt the user to confirm that the desired/appropriate model (/model) is being used for this project.
+Since this is to be repeated, leave the todo tag as LOOP.
+** -
+
+* Stage 1: Create bisos.geneweb as a CBM package (cbm-package-authorship pattern)
+
+Goal: GeneWeb's gwd as a hereWeb-collective capability at geneweb.here, with an empty demo base,
+enabled in the rawBisosCbm set, materialized and verified on this host.
+
+
+* Stage 1 TODOs
+** +
+** TODO [#A] <<1.1>> Create the package and materialize it on this host :aiAndMe:
+:PROPERTIES:
+:ORIGIN: Mohsen
+:REPO: this
+:FOUND: <2026-10-16 Fri 21:45>
+:END:
+One more package, bisos.geneweb, on the same pattern (user, 2026-10-16).
+----- Results: ------
+- 2026-10-16. Decided with the user (all five recommendations accepted): pin v7.1.0-beta2 (the newest
+  release, the only one with a GitHub digest; named a beta); gwd only --- gwsetup cannot bind an address;
+  wizard password geneweb, no friend password, public pages without login; an empty demo base; the usage
+  side is the GEDCOM and base tools from the same zip (as promtool from the Prometheus tarball).
+- Facts: Debian 13 has no geneweb package; the zip's binaries need only libgmp10 beyond libc; gwd
+  runs from a read-only distribution (writes only bases and -wd); 21 MB + 2 workers. Older BISOS
+  installers in /bisos/asc/geneweb6, geneweb7 (bash-ICM, an unpinned 2022 zip). No Simpson-family
+  data exists (only the name, in the capability panels' niche example).
+- bisos.banna: geneweb=24017 (127.0.22.119 geneweb.here); sysAccts geneweb 508.
+- Files: genewebInfo.py (zipSetupScript, the zip form of the tarball helper); geneweb-sbom.pcs,
+  genewebUsage-sbom.pcs, genewebCbs-sbom.pcs; geneweb-sysd.pcs; geneweb-here-dns.pcs,
+  geneweb-wvd.pcs, geneweb-assemble.cs; geneweb-cbs.pcs; cbmProc-geneweb.spcs; genewebAdmin.cs,
+  quickGeneweb.cs; verify.sh; README.org; the panel.
+- Materialized: geneweb-cbs.pcs -i cbs_materialize, twice (rc 0; the second changed nothing). Unit
+  active, listening on 127.0.0.1:24017 only; http://geneweb.here and /demo 200. A small GEDCOM
+  imported with ged2gwb, its person served; editing 401 without the wizard password, the edit form
+  with it; exported back with gwb2ged. Test data removed. driftCheck agrees; verify.sh passes.
+- NOT done: the CBM leaf in bro_rawBisos, enabled (1.2); Blee dblock refresh (1.3).
+** TODO [#B] <<1.2>> Plant the CBM leaf in bro_rawBisos, enabled :aiAndMe:
+sys/cbm/collective/hereWeb/geneweb/; add geneweb to branchesOrdered (after nginx). Outside this repo.
+----- Results: ------
+** TODO [#B] <<1.3>> Blee dblock refresh :me:
+----- Results: ------
+** -
+
+
+# Local Variables:
+# eval: (setq-local toc-org-max-depth 4)
+# eval: (setq-local org-log-done 'time)
+# End:

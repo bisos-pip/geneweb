@@ -1,0 +1,196 @@
+#+title: bisos.geneweb: GeneWeb Genealogy via BISOS Capability Bundles
+#+DATE: <2026-10-16 Fri>
+#+AUTHOR: Mohsen BANAN
+#+OPTIONS: toc:4
+
+#+BEGIN: b:org:pypi:readme/topControls :pkgName "geneweb" :comment "basic"
+
+|----------------------+------------------------------------------------------------------|
+| ~Blee Panel Controls~: | [[elisp:(show-all)][Show-All]] : [[elisp:(org-shifttab)][Overview]] : [[elisp:(progn (org-shifttab) (org-content))][Content]] : [[elisp:(delete-other-windows)][(1)]] : [[elisp:(progn (save-buffer) (kill-buffer))][S&Q]] : [[elisp:(save-buffer)][Save]]  : [[elisp:(kill-buffer)][Quit]]  : [[elisp:(bury-buffer)][Bury]] |
+| ~Panel Links~:         | [[file:./py3/panels/bisos.geneweb/_nodeBase_/fullUsagePanel-en.org][Repo Blee Panel]] --  [[file:/bisos/git/auth/bxRepos/bisos-pip/geneweb/py3/panels/bisos.geneweb/_nodeBase_/fullUsagePanel-en.org][Blee Panel]]                                   |
+| ~See Also~:            | [[https://pypi.org/project/bisos.geneweb][At PYPI]] : [[https://github.com/bisos-pip/pycs][bisos.PyCS]]                                             |
+|----------------------+------------------------------------------------------------------|
+
+#+END:
+
+* Overview
+
+/bisos.geneweb/ is a BISOS package for running [[https://geneweb.tuxfamily.org][GeneWeb]], genealogy
+software, on a BISOS host: its web server, =gwd=, as a BISOS Capability Bundle (CBS/CBM) of
+=systemd=-planted Command Services, browsable as =http://geneweb.here=, with an empty =demo= base
+so =http://geneweb.here/demo= works out of the box.
+
+It is small (21 MB with 2 workers) and is enabled in the rawBisosCbm set, with the raw platform as
+its real home (see =bxGenesis/start/rawBisosCBMs/README.org=).
+
+#+BEGIN: b:org:pypi:readme/pkgDocumentation :pkgName "geneweb-cs" :comment "basic"
+
+# PYPI Documentation Comes Here in _description.org
+#+END:
+
+* Table of Contents     :TOC:
+- [[#overview][Overview]]
+- [[#the-bisos-geneweb-model][The BISOS GeneWeb Model]]
+- [[#the-wizard-password][The Wizard Password]]
+- [[#what-gets-installed-and-where][What Gets Installed, and Where]]
+- [[#the-3-sboms-and-the-unit][The 3 sboms and the Unit]]
+- [[#installation][Installation]]
+- [[#usage][Usage]]
+  - [[#materialization][Materialization]]
+  - [[#bases-create-import-export][Bases: Create, Import, Export]]
+  - [[#day-to-day-admin-genewebadmincs][Day-to-Day Admin: =genewebAdmin.cs=]]
+- [[#key-files][Key Files]]
+- [[#part-of-bisos--bystar-internet-services-operating-system][Part of BISOS]]
+- [[#documentation-and-blee-panels][Documentation and Blee-Panels]]
+- [[#support][Support]]
+- [[#planned-improvements][Planned Improvements]]
+
+* The BISOS GeneWeb Model
+
+=bisos.geneweb= packages GeneWeb 7.1.0-beta2 as a hereWeb CBS/CBM, on the pattern of the other
+CBM packages (the =cbm-package-authorship= skill): one module of facts (=genewebInfo.py=), a pinned
+and checksummed upstream release, config written only when absent, a read-only =driftCheck=, a
+server sbom and a usage sbom joined only by the CBS.
+
+- *The release.* Debian 13 does not package GeneWeb. The upstream Linux zip (59 MB; 171 MB unpacked)
+  is pinned with the SHA-256 GitHub records for it. 7.1.0-beta2 (2025-12-25) is the newest release
+  and the only one with a published digest. It is named a beta. GeneWeb is OCaml: its binaries need
+  only =libgmp10= beyond libc.
+- *gwd only.* =gwsetup=, GeneWeb's setup web UI, is not run: it cannot bind an address and would
+  listen on every interface. Bases are created with the command-line tools (below).
+- *Read-only distribution.* =gwd= runs from the root-owned unpacked zip and writes only to its bases
+  and work directories.
+- *Earlier BISOS GeneWeb.* =/bisos/asc/geneweb6= and =geneweb7= hold older bash-ICM installers (an
+  unpinned 2022 zip); this package replaces them for the CBM pattern.
+
+*As of 2026-10-16 it is materialized on one host* (Debian 13): the unit active; a GEDCOM imported
+with =ged2gwb=, browsed through =http://geneweb.here=, and exported back with =gwb2ged=; editing
+refused without the wizard password and allowed with it; =driftCheck= agrees.
+
+* The Wizard Password
+
+GeneWeb has no user names: a /wizard/ password lets you edit, a /friend/ password lets you see
+private data. Following the rawBisos convention (the password is the service's name), the wizard
+password is *geneweb*; there is no friend password, and public pages need no login. It is passed to
+=gwd= with =-wizard= (visible in =ps=). Insecure by design; securing a host is a separate layer.
+
+* What Gets Installed, and Where
+
+| What                  | Where                                      | Owner            |
+|-----------------------+--------------------------------------------+------------------|
+| The =geneweb= account | uid/gid 508, from bisos.banna              | ---              |
+| GeneWeb 7.1.0-beta2   | =/opt/geneweb/geneweb-7.1.0-beta2=         | root             |
+| Active GeneWeb        | =/opt/geneweb/current= -> the above        | root             |
+| gwd flags             | =/etc/default/geneweb= (=ARGS==)           | root:geneweb 640 |
+| The bases             | =/var/lib/geneweb/bases= (=demo= at first) | geneweb (750)    |
+| gwd's work directory  | =/var/lib/geneweb/wd=                      | geneweb          |
+
+=ARGS= sets =-a 127.0.0.1 -p 24017 -n_workers 2 -lang en -wizard geneweb -log -= (the log goes to
+journald). The EnvironmentFile is written only when absent; the =demo= base is created once.
+=genewebAdmin.cs -i driftCheck= reports the EnvironmentFile, the unit, the link and the demo base.
+
+* The 3 sboms and the Unit
+
+| sbom                    | Installs                                        | Pulls in |
+|-------------------------+-------------------------------------------------+----------|
+| =geneweb-sbom.pcs=      | curl, unzip, libgmp10; account; the zip; config | nothing  |
+| =genewebUsage-sbom.pcs= | the same zip, for the GEDCOM and base tools     | nothing  |
+| =genewebCbs-sbom.pcs=   | nothing of its own                              | both     |
+
+GeneWeb has no separate client: one uses it in a browser. Its usage side is its tools ---
+=ged2gwb=, =gwb2ged=, =gwc=, =gwu= --- for preparing and converting family trees on any host. They
+ship only in the zip, so both sboms unpack the same pinned zip (whichever runs first).
+
+The unit, =geneweb-sysd.pcs=, runs =gwd $ARGS= as =User=geneweb=. Port 24017 and =geneweb.here=
+(127.0.22.119) come from =bisos.banna=.
+
+* Installation
+
+The sources are at https://github.com/bisos-pip/geneweb and the package is at
+https://pypi.org/project/bisos.geneweb. Install with =pip install bisos.geneweb=, or with
+=pipx install bisos.geneweb= for the commands only: =genewebAdmin.cs=, =quickGeneweb.cs=,
+=geneweb-assemble.cs=, =cbmProc-geneweb.spcs=. The planted =.pcs= files are invoked from =py3/bin/=.
+
+* Usage
+
+** Materialization
+
+#+begin_src bash
+geneweb-sbom.pcs -i sbom_fullUpdate          # the server only
+genewebUsage-sbom.pcs -i sbom_fullUpdate     # the tools only
+geneweb-cbs.pcs -i cbs_materialize           # both sboms + unit + assemble
+#+end_src
+
+Then browse =http://geneweb.here/demo=.
+
+** Bases: Create, Import, Export
+
+Run the tools as the =geneweb= account, in the bases directory. A new base is served at once, with
+no restart, as =http://geneweb.here/<name>=.
+
+#+begin_src bash
+cd /var/lib/geneweb/bases
+sudo -u geneweb /opt/geneweb/current/gw/gwc -o family                       # an empty base
+sudo -u geneweb /opt/geneweb/current/gw/ged2gwb /tmp/family.ged -o family   # GEDCOM -> base
+sudo -u geneweb /opt/geneweb/current/gw/gwb2ged family -o /tmp/family.ged   # base -> GEDCOM
+#+end_src
+
+** Day-to-Day Admin: =genewebAdmin.cs=
+
+#+begin_src bash
+genewebAdmin.cs -i hostInfo        # fqdn, listener, wizard password, paths
+genewebAdmin.cs -i servicesInfo    # links for operating the unit, dns and vhost
+genewebAdmin.cs -i basesInfo       # create, import, export, list bases
+genewebAdmin.cs -i driftCheck      # read-only: env file, unit, link, demo base vs genewebInfo
+quickGeneweb.cs                    # the flat cheat sheet
+#+end_src
+
+* Key Files
+
+- =py3/bisos/geneweb/genewebInfo.py= --- the single source of facts: the pinned release, paths, port,
+  wizard password, the demo base, the generators and the install scripts (=zipSetupScript=, the zip
+  form of the tarball helper).
+- =py3/bin/geneweb-cbs.pcs=, =cbmProc-geneweb.spcs= --- the CBS and the CBM pointer.
+- =py3/bin/geneweb-sbom.pcs=, =genewebUsage-sbom.pcs=, =genewebCbs-sbom.pcs= --- the three sboms.
+- =py3/bin/geneweb-sysd.pcs= --- the unit.
+- =py3/bin/geneweb-assemble.cs=, =geneweb-here-dns.pcs=, =geneweb-wvd.pcs= --- assembly.
+- =py3/bin/genewebAdmin.cs=, =quickGeneweb.cs= --- admin CS and cheat sheet.
+- =py3/tests/verify.sh= --- smoke test of every command and of =genewebInfo='s invariants.
+
+* Part of BISOS — ByStar Internet Services Operating System
+
+Layered on top of Debian, *BISOS* (By* Internet Services Operating System) is a unified and
+universal framework for developing both internet services and software-service continuums that use
+internet services. See [[https://github.com/bxGenesis/start][Bootstrapping ByStar, BISOS and Blee]] for
+getting started with BISOS.
+
+*BISOS* is a foundation for *The Libre-Halaal ByStar Digital Ecosystem* which is described as a cure
+for losses of autonomy and privacy in a book titled:
+[[https://github.com/bxplpc/120033][Nature of Polyexistentials]]
+
+/bisos.geneweb/ is part of BISOS. It is a standalone package that can be used independently of the
+full BISOS environment.
+
+* Documentation and Blee-Panels
+
+bisos.geneweb is part of the ByStar Digital Ecosystem [[http://www.by-star.net]]. Its primary
+documentation is in the form of Blee-Panels, in =./py3/panels=; see
+[[file:./py3/panels/bisos.geneweb/_nodeBase_/fullUsagePanel-en.org]] for a starting point. It is best
+developed with [[https://github.com/bx-blee][Blee]], the /By* BISOS Libre-Halaal Emacs Environment/.
+
+* Support
+
+For support, criticism, comments and questions; please contact the author/maintainer\\
+[[http://mohsen.1.banan.byname.net][Mohsen Banan]] at: [[http://mohsen.1.banan.byname.net/contact]]
+
+* Planned Improvements
+
+** TODO Move to a final 7.1 release when one is published (with its digest)
+** TODO The "secure it" layer: real passwords, HTTPS, listening beyond loopback
+** TODO gwsetup, if it gains an option to bind an address
+** TODO Plant the CBM leaf in bro_rawBisos (=sys/cbm/collective/hereWeb/geneweb/=), enabled
+
+
+# Local Variables:
+# eval: (setq-local toc-org-max-depth 4)
+# End:

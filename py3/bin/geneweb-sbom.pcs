@@ -1,0 +1,161 @@
+#!/usr/bin/env python
+
+""" #+begin_org
+* Panel::  [[file:./py3/panels/bisos.geneweb/_nodeBase_/fullUsagePanel-en.org]]
+* Overview and Relevant Pointers
+geneweb-sbom.pcs: software bill of materials of the GeneWeb hereWeb capability --- gwd, GeneWeb's
+genealogy web server, with an empty demo base so http://geneweb.here/demo works out of the box.
+Debian 13 does not package GeneWeb: the upstream Linux zip is fetched at a pinned version, verified
+against its pinned checksum, by func-bearing pseudo-packages. gwsetup is not run (it cannot bind an
+address). The wizard password is geneweb (the rawBisos convention; insecure by design).
+This is the server only. The usage side (the GEDCOM tools) is genewebUsage-sbom.pcs, which this sbom
+does not pull in; genewebCbs-sbom.pcs, the sbom of geneweb-cbs.pcs, runs both.
+#+end_org """
+
+from bisos import b
+from bisos.b import cs
+from bisos.b import b_io
+
+from bisos.sbom import pkgsSeed  # pkgsSeed.plantWithWhich("seedSbom.cs")
+from bisos.banna import sysAccts
+from bisos.geneweb.genewebInfo import (
+    genewebInfo, distSetupScript, demoBaseScript, envFileContent,
+)
+
+ap = pkgsSeed.aptPkg
+
+# The facts of the installation --- account, version, checksum, paths, env file, port, password ---
+# come from bisos.geneweb.genewebInfo, the one source the unit, genewebAdmin.cs, dns and vhost read.
+#
+# Each func-bearing pseudo-package below runs on *every* sbom_fullUpdate and must stay idempotent.
+# Ordering in aptPkgsList is load-bearing.
+
+
+def _bash(script: str) -> b.op.Outcome:
+    outcome = b.subProc.WOpW(invedBy=None, log=1).bash(script)
+    if outcome.isProblematic():
+        b_io.eh.badOutcome(outcome)
+    return outcome
+
+
+def genewebAcctSetup():
+    """The geneweb system account and the dirs it must own. Not an apt package."""
+    i = genewebInfo
+    return _bash(f"""
+set -e
+{sysAccts.useraddScript(i.acctName)}
+
+sudo mkdir -p {i.basesDir} {i.workDir} {i.installBase}
+sudo chown -R {i.acctName}:{i.acctName} {i.dataDir}
+sudo chmod 750 {i.dataDir}
+""")
+
+
+def genewebDistSetup():
+    """The pinned GeneWeb zip, verified, unpacked root-owned, current -> it. Not an apt package."""
+    return _bash(distSetupScript())
+
+
+def genewebConfSetup():
+    """/etc/default/geneweb (only when absent) and the empty demo base (only once). Not an apt package."""
+    i = genewebInfo
+    return _bash(f"""
+set -e
+if [ ! -f {i.envFile} ] ; then
+    sudo tee {i.envFile} >/dev/null <<'GENEWEB_ENV_EOF'
+{envFileContent()}GENEWEB_ENV_EOF
+fi
+sudo chown root:{i.acctName} {i.envFile}
+sudo chmod 640 {i.envFile}
+{demoBaseScript()}
+""")
+
+
+aptPkgsList = [
+    ap("curl"),                                        # Fetches the zip
+    ap("unzip"),                                       # Unpacks it
+    ap("libgmp10"),                                    # gwd and the tools link libgmp
+    ap("genewebAcctSetup", func=genewebAcctSetup),
+    ap("genewebDistSetup", func=genewebDistSetup),    # after curl, unzip and the account dirs
+    ap("genewebConfSetup", func=genewebConfSetup),    # after the dist: gwc creates the demo base
+]
+
+pkgsSeed.setup(
+    aptPkgsList=aptPkgsList,
+)
+
+
+####+BEGIN: b:py3:cs:cmnd/classHead :cmndName "readme" :extent "verify" :comment "Describe" :parsMand "" :parsOpt "" :argsMin 0 :argsMax 0 :pyInv ""
+""" #+begin_org
+*  _[[elisp:(blee:menu-sel:outline:popupMenu)][±]]_ _[[elisp:(blee:menu-sel:navigation:popupMenu)][Ξ]]_ [[elisp:(outline-show-branches+toggle)][|=]] [[elisp:(bx:orgm:indirectBufOther)][|>]] *[[elisp:(blee:ppmm:org-mode-toggle)][|N]]*  CmndSvc-   [[elisp:(outline-show-subtree+toggle)][||]] <<readme>>  *Describe*  =verify= ro=cli   [[elisp:(org-cycle)][| ]]
+#+end_org """
+class readme(cs.Cmnd):
+    cmndParamsMandatory = [ ]
+    cmndParamsOptional = [ ]
+    cmndArgsLen = {'Min': 0, 'Max': 0,}
+
+    @cs.track(fnLoc=True, fnEntry=True, fnExit=True)
+    def cmnd(self,
+             rtInv: cs.RtInvoker,
+             cmndOutcome: b.op.Outcome,
+    ) -> b.op.Outcome:
+        """Describe"""
+        failed = b_io.eh.badOutcome
+        callParamsDict = {}
+        if self.invocationValidate(rtInv, cmndOutcome, callParamsDict, None).isProblematic():
+            return failed(cmndOutcome)
+####+END:
+        i = genewebInfo
+        descriptionStr = f"""\
+** Scope: GeneWeb {i.version} (gwd) for this host, browsed as {i.baseUrl}; the demo base at
+   {i.demoUrl}. Wizard password: {i.wizardPassword}  (rawBisos convention; insecure by design)
+
+** What this installs:
+  1) apt packages: curl, unzip, libgmp10.
+  2) genewebAcctSetup: the {i.acctName} system account, with uid/gid
+     {sysAccts.sysAcctOf(i.acctName).uid} from bisos.banna.sysAccts; {i.basesDir} and {i.workDir}.
+  3) genewebDistSetup: {i.distUrl()}
+     verified by SHA-256, unpacked root-owned into {i.distDir},
+     with {i.homeLink} pointing at it.
+  4) genewebConfSetup: {i.envFile} (only when absent); the empty base {i.demoBase}
+     (only once, with gwc).
+
+** Listener (loopback; port from bisos.banna):
+     gwd  {i.localUrl}   (nginx: {i.baseUrl})
+
+** What this does NOT do:
+  - It does not start anything: geneweb-cbs.pcs declares the geneweb unit.
+  - It does not run gwsetup (GeneWeb's setup UI cannot bind an address). Create bases with gwc or
+    ged2gwb (see genewebAdmin.cs -i basesInfo).
+
+       geneweb-sbom.pcs -i sbom_fullUpdate\
+"""
+        print(descriptionStr)
+
+        return cmndOutcome.set(
+            opError=b.op.OpError.Success,
+            opResults=None,
+        )
+
+
+def examples_csu() -> b.op.Outcome:
+    """Common Usage Examples for this Command-Service Unit"""
+
+    cmnd = cs.examples.cmndEnter
+    literal = cs.examples.execInsert
+    i = genewebInfo
+
+    cmndOutcome = b.op.Outcome()
+
+    cs.examples.menuChapter('*GeneWeb -- sbom Examples*')
+    cmnd('readme', comment=" # An overview short description")
+
+    cs.examples.menuChapter('*Installation*')
+    literal("geneweb-sbom.pcs -i sbom_fullUpdate")
+
+    cs.examples.menuChapter('*Verify Installation*')
+    literal(f"ls -l {i.homeLink}")
+    literal(f"sudo ls -l {i.basesDir}")
+
+    cs.examples.menuChapter('*End-Of GeneWeb -- sbom Examples*')
+    return cmndOutcome
